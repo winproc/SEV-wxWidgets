@@ -12,5 +12,23 @@ public:
 	*/
 	RenderWindow(const std::string& Title);
 
+private:
+
 	
+};
+
+class EngineFrame : public wxButton {
+
+public:
+
+	/*
+	
+	Constructor for the custom control representing the engine toggle state
+	
+	@param Radius Radius of the circle representing the engine toggle state
+	@param Position Position of the control relative to the window client area
+
+	*/
+	EngineFrame(int Radius, const wxPoint& Position);
+
 };
