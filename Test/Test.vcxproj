@@ -44,14 +44,14 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -76,8 +76,8 @@
     <LibraryPath>E:\wx_source\wxWidgets-3.0.5\lib\vc_x64_lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>E:\protobuf\include;E:\krpc\include;E:\wx_source\wxWidgets-3.2.4\lib\vc_x64_lib\mswu;E:\wx_source\wxWidgets-3.2.4\include;$(IncludePath)</IncludePath>
-    <LibraryPath>E:\protobuf\lib;E:\krpc\Release;E:\wx_source\wxWidgets-3.2.4\lib\vc_x64_lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>E:\protobuf\include;E:\krpc\include;E:\wx_source\wxWidgets-3.2.4-static\lib\vc_x64_lib\mswu;E:\wx_source\wxWidgets-3.2.4-static\include;$(IncludePath)</IncludePath>
+    <LibraryPath>E:\protobuf\lib;E:\krpc\Release;E:\wx_source\wxWidgets-3.2.4-static\lib\vc_x64_lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -127,7 +127,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

@@ -6,7 +6,12 @@
 #include <wx/wx.h>
 #endif
 
-// #include <krpc.hpp>
+#include <wx/notifmsg.h>
+#include <wx/graphics.h>
+
+#include <krpc.hpp>
+#include <krpc/error.hpp>
+#include "krpc/services/krpc.hpp"
 
 // Declarations
 
@@ -15,21 +20,40 @@
 
 class MainApp : public wxApp {
 public:
+
 	virtual bool OnInit();
+
 private:
 
-	wxMenu* ToggleShortcutList;
+	krpc::Client ServerConnection{};
+	bool ConnectionInitialized = false;
 
+	wxMenu* ToggleShortcutList                      = NULL;
+	
 	std::vector<EngineFrame> BoosterEngines;
 	std::vector<EngineFrame> StarshipEngines;
 
-
+	void RPCConnect();
 	void OnRMBClicked(const wxMouseEvent& Event);
 	void OnMenuActivated(const wxCommandEvent& Event);
 	
 };
 
 // Definitions
+
+void MainApp::RPCConnect() {
+	try {
+		ServerConnection = krpc::connect("Starship Layout Emulator", "localhost");
+		ConnectionInitialized = true;
+	}
+	catch (std::runtime_error Error) {
+		wxMessageBox("The program was unable to connect to the kRPC server.\n\nCheck if your server is running (on RPC port 50000 and stream port 50001)", "Connection Error");
+		
+		ServerConnection = {};
+		ConnectionInitialized = false;
+	}
+
+}
 
 void MainApp::OnRMBClicked(const wxMouseEvent& Event) {
 
@@ -40,9 +64,45 @@ void MainApp::OnRMBClicked(const wxMouseEvent& Event) {
 
 void MainApp::OnMenuActivated(const wxCommandEvent& Event) {
 
-	wxMessageBox("Test", "no");
+	switch (Event.GetId()) {
+	case 5:
+		RPCConnect();
+	}
 
 }
+
+EngineFrame::EngineFrame(int Radius, const wxPoint& Position, wxWindow* Parent, int Id) : 
+	wxButton(
+		Parent, 
+		Id, 
+		wxEmptyString,
+		Position,
+		wxSize(Radius, Radius),
+		wxBU_NOTEXT || wxBORDER_NONE
+	) 
+{
+	
+	this->Radius = Radius;
+
+	Bind(wxEVT_PAINT, &EngineFrame::OnPaint, this);
+
+}
+
+void EngineFrame::OnPaint(const wxPaintEvent& Event) {
+
+	wxGraphicsRenderer* D2DRenderer = wxGraphicsRenderer::GetDirect2DRenderer();
+
+	wxPaintDC PaintContext(this);
+	wxGraphicsContext* WinContext = D2DRenderer->CreateContextFromUnknownDC(PaintContext);
+
+	WinContext->SetBrush(*wxRED_BRUSH);
+	WinContext->DrawEllipse(50, 50, 100, 100);
+	WinContext->Flush();
+
+	delete WinContext;
+}
+
+
 
 
 RenderWindow::RenderWindow(const std::string& Title) : wxFrame(NULL, 1, Title, wxPoint(100, 100), wxSize(1200, 600)) {
@@ -55,7 +115,12 @@ wxIMPLEMENT_APP(MainApp);
 
 bool MainApp::OnInit() {
 
+	RPCConnect();
+
 	RenderWindow* RenderingFrame = new RenderWindow("Starship Engine Layout");
+	wxPanel* ControlUI = new wxPanel(RenderingFrame);
+
+	EngineFrame* Engine = new EngineFrame(500, wxPoint(1, 3), ControlUI, 18);
 
 	ToggleShortcutList = new wxMenu();
 	ToggleShortcutList->Append(1, "Enable SH Engines");
@@ -64,13 +129,13 @@ bool MainApp::OnInit() {
 	ToggleShortcutList->Append(3, "Enable SS Engines");
 	ToggleShortcutList->Append(4, "Disable SS Engines");
 
+	ToggleShortcutList->Append(5, "Reconnect to kRPC");
+
 	Bind(wxEVT_RIGHT_UP, &MainApp::OnRMBClicked, this);
 	Bind(wxEVT_MENU, &MainApp::OnMenuActivated, this);
-	
-	
 
 	RenderingFrame->Show();
-
+	
 	return true;
 }
 

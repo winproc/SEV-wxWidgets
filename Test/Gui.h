@@ -29,6 +29,13 @@ public:
 	@param Position Position of the control relative to the window client area
 
 	*/
-	EngineFrame(int Radius, const wxPoint& Position);
+	EngineFrame(int Radius, const wxPoint& Position, wxWindow* Parent, int Id);
+
+	bool Enabled = false;
+	int Radius;
+
+private:
+
+	void OnPaint(const wxPaintEvent& Event);
 
 };
