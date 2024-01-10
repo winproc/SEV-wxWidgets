@@ -83,8 +83,16 @@ EngineFrame::EngineFrame(int Radius, const wxPoint& Position, wxWindow* Parent, 
 {
 	
 	this->Radius = Radius;
+	this->Pos = Position;
 
 	Bind(wxEVT_PAINT, &EngineFrame::OnPaint, this);
+
+}
+
+void EngineFrame::Clear(wxGraphicsContext* GC) {
+
+	GC->SetBrush(*wxBLACK_BRUSH);
+	GC->DrawRectangle(this->Pos.x, this->Pos.y, Radius, Radius);
 
 }
 
@@ -93,15 +101,19 @@ void EngineFrame::OnPaint(const wxPaintEvent& Event) {
 	wxGraphicsRenderer* D2DRenderer = wxGraphicsRenderer::GetDirect2DRenderer();
 
 	wxPaintDC PaintContext(this);
+
 	wxGraphicsContext* WinContext = D2DRenderer->CreateContextFromUnknownDC(PaintContext);
 
-	WinContext->SetBrush(*wxRED_BRUSH);
-	WinContext->DrawEllipse(50, 50, 100, 100);
+	Clear(WinContext);
+
+	WinContext->SetBrush(*wxBLACK_BRUSH);
+	WinContext->SetPen(*wxWHITE_PEN);
+
+	WinContext->DrawEllipse(this->Pos.x, this->Pos.y, Radius, Radius);
 	WinContext->Flush();
 
 	delete WinContext;
 }
-
 
 
 
