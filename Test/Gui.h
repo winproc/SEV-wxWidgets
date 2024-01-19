@@ -5,11 +5,10 @@ class RenderWindow : public wxFrame {
 
 public:
 
-	/*
-	Constructor for the top-level window
-
-	@param Title Name of the window
-	*/
+	/// <summary>
+	/// <c>RenderWindow</c> is a class for the custom control representing the engine toggle state
+	/// </summary>
+	/// <param name="Title">Name of the window</param>
 	RenderWindow(const std::string& Title);
 
 private:
@@ -17,36 +16,29 @@ private:
 	
 };
 
+/// <summary>
+/// <c>EngineFrame</c> is a class for the custom control representing the engine toggle state
+/// </summary>
+
+/// <permission>Publicly accessible</permission>
 class EngineFrame : public wxButton {
 
 public:
-
-	/// <summary>
-	/// <c>EngineFrame</c> is a constructor for the custom control representing the engine toggle state
-	/// </summary>
+	
 	/// <param name="Radius">Radius of the circle representing the engine toggle state</param>
 	/// <param name="Position">Position of the control relative to the window client area</param>
-	/// <example>
-	/// <code>
-    /// int main()
-    /// {
-    ///    RenderWindow* RenderingFrame = new RenderWindow("Starship Engine Layout");
-	///    wxPanel* ControlUI = new wxPanel(RenderingFrame);
-	/// 
-	///    EngineFrame* Engine = new EngineFrame(500, wxPoint(1, 3), ControlUI, 18);
-    /// }
-    /// </code>
-    /// </example>
-	/// <permission>Publicly accessible</permission>
 	EngineFrame(int Radius, const wxPoint& Position, wxWindow* Parent, int Id);
 
-	bool Enabled = false;
+	bool enabled = false;
 
-	wxPoint Pos;
-	int Radius;
+	wxPoint position;
+	int radius;
+
+	void Redraw();
 
 private:
 
+	
 	void OnPaint(const wxPaintEvent& Event);
 	void Clear(wxGraphicsContext* GC);
 
