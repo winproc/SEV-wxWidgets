@@ -15,7 +15,7 @@ std::vector<wxPoint> ComputePointsOnCircle(int Radius, int MaxPoints, int Invert
 	// Create a point for each angle step
 	for (int Factor = 0; (Factor * AngleStep) < 6.28319; Factor++) {
 
-		wxPoint LocusPoint(0, Radius * Inverted);
+		wxPoint LocusPoint(0, Radius * copysign(1,Inverted));
 
 		// Angle is negative to ensure a clockwise rotation
 		float Angle = -Factor * AngleStep;

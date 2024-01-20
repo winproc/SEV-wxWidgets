@@ -30,10 +30,12 @@ public:
 	EngineFrame(int Radius, const wxPoint& Position, wxWindow* Parent, int Id);
 
 	bool enabled = false;
+	std::string kRPCNametag;
 
 	wxPoint position;
 	int radius;
 
+	static EngineFrame* FindFrameByNametag(std::string Nametag, const std::vector<EngineFrame*>& List);
 	void Redraw();
 
 private:

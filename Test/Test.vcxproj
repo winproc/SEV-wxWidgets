@@ -145,7 +145,15 @@
   <ItemGroup>
     <ClInclude Include="Geometry.h" />
     <ClInclude Include="Gui.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="Source.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="SSOrientation.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="D:\Art\Starship_7.png" />
+    <Image Include="D:\Art\Super_Heavy_1.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

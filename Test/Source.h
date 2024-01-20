@@ -19,7 +19,10 @@ private:
 	std::vector<EngineFrame*> starshipEngines;
 
 	void RPCConnect();
+	bool RegisterEventCallbacks();
+
 	void OnRMBClicked(const wxMouseEvent& Event);
 	void OnMenuActivated(const wxCommandEvent& Event);
 
 };
+

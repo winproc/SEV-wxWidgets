@@ -1,11 +1,12 @@
 #pragma once
 
-/*
+#include <cmath>
 
-Compute the locations of all points that will be used as the position for the engine toggle circles
-
-@param Radius Radius of the ring
-
-
-*/
+/// <summary>
+/// 
+/// </summary>
+/// <param name="Radius"></param>
+/// <param name="MaxPoints"></param>
+/// <param name="Inverted"></param>
+/// <returns></returns>
 std::vector<wxPoint> ComputePointsOnCircle(int Radius, int MaxPoints, int Inverted);

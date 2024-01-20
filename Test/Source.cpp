@@ -11,7 +11,9 @@
 
 #include <krpc.hpp>
 #include <krpc/error.hpp>
+
 #include "krpc/services/krpc.hpp"
+#include "krpc/services/space_center.hpp"
 
 // Declarations
 
@@ -25,6 +27,8 @@ void MainApp::RPCConnect() {
 	try {
 		serverConnection = krpc::connect("Starship Layout Emulator", "localhost");
 		isConnectionInitialized = true;
+
+		RegisterEventCallbacks();
 	}
 	catch (std::runtime_error Error) {
 		wxMessageBox("The program was unable to connect to the kRPC server.\n\nCheck if your server is running (on RPC port 50000 and stream port 50001)", "Connection Error");
@@ -33,6 +37,59 @@ void MainApp::RPCConnect() {
 		isConnectionInitialized = false;
 	}
 
+}
+
+bool MainApp::RegisterEventCallbacks() {
+	if (isConnectionInitialized) {
+
+			krpc::services::KRPC krpc_server(&serverConnection);
+			krpc::services::SpaceCenter spaceCenter(&serverConnection);
+
+			krpc::services::SpaceCenter::Vessel Vessel;
+			krpc::services::SpaceCenter::Parts Parts;
+
+			Vessel = spaceCenter.active_vessel();
+			Parts = Vessel.parts();
+			
+			for (EngineFrame* EngineUI : boosterEngines) {
+
+				auto GetEngine = [&Parts, &EngineUI]() {
+					
+					auto EngineList = Parts.with_tag(EngineUI->kRPCNametag);
+
+					if (EngineList.size() > 0) {
+						return EngineList[0];
+					}
+
+					
+				};
+
+				krpc::services::SpaceCenter::Part Engine;
+				Engine = GetEngine();
+
+				auto engine = Engine.engine();
+
+				auto thrust_call = engine.thrust_call();
+
+				typedef krpc::services::KRPC::Expression Expr;
+
+				auto eventHandler = ([&engine, EngineUI]() {
+
+					EngineUI->enabled = (engine.thrust() == 0.0f) ? false : true;
+					EngineUI->Redraw();
+
+				});
+
+				auto disablingEvent = krpc_server.add_event(Expr::equal(serverConnection, Expr::call(serverConnection, thrust_call), Expr::constant_float(serverConnection, 0.0f)));
+				auto enablingEvent = krpc_server.add_event(Expr::greater_than(serverConnection, Expr::call(serverConnection, thrust_call), Expr::constant_float(serverConnection, 0.0f)));
+
+				disablingEvent.add_callback(eventHandler);
+				enablingEvent.add_callback(eventHandler);
+			}
+			
+		
+	}
+	else return false;
 }
 
 void MainApp::OnRMBClicked(const wxMouseEvent& Event) {
@@ -84,16 +141,16 @@ EngineFrame::EngineFrame(int Radius, const wxPoint& Position, wxWindow* Parent, 
 
 	Create(Parent, Id, wxEmptyString, Position, wxSize(Radius, Radius), wxBU_NOTEXT || wxBORDER_NONE);
 
-	SetBackgroundColour(wxBLACK->GetAsString());
+	//SetBackgroundColour(wxBLACK->GetAsString());
 
 	Bind(wxEVT_PAINT, &EngineFrame::OnPaint, this);
 
 }
 
 void EngineFrame::Clear(wxGraphicsContext* GC) {
-
+	
 	GC->SetBrush(*wxBLACK_BRUSH);
-	GC->DrawEllipse(0, 0, radius, radius);
+	GC->DrawRectangle(0, 0, radius, radius);
 
 }
 
@@ -110,7 +167,7 @@ void EngineFrame::Redraw() {
 	if (enabled)
 		winContext->SetBrush(wxBrush(*wxWHITE_BRUSH));
 	else
-		winContext->SetBrush(wxBrush(*wxBLACK_BRUSH));
+		winContext->SetBrush(wxBrush(*wxTRANSPARENT_BRUSH));
 
 	winContext->DrawEllipse(0, 0, radius - 1, radius - 1);
 
@@ -121,6 +178,18 @@ void EngineFrame::Redraw() {
 
 void EngineFrame::OnPaint(const wxPaintEvent& Event) { Redraw(); };
 
+EngineFrame* EngineFrame::FindFrameByNametag(std::string Nametag, const std::vector<EngineFrame*>& List) {
+
+	for (EngineFrame* Frame : List) {
+
+		if (Frame->kRPCNametag == Nametag) {
+			return Frame;
+		}
+
+	}
+
+	return NULL;
+}
 
 RenderWindow::RenderWindow(const std::string& Title) : wxFrame(NULL, 1, Title, wxPoint(100, 100), wxSize(1200, 600)) {
 	
@@ -132,12 +201,13 @@ wxIMPLEMENT_APP(MainApp);
 
 bool MainApp::OnInit() {
 
-	RPCConnect();
+	
 
 	RenderWindow* renderingFrame = new RenderWindow("Starship Engine Layout");
 	wxPanel* controlUI = new wxPanel(renderingFrame);
 
-	std::vector<wxPoint> innerRingEnginePositions = ComputePointsOnCircle(30, 3, 1);
+	std::vector<wxPoint> innerRingEnginePositions = ComputePointsOnCircle(31, 3, 1);
+	innerRingEnginePositions.pop_back(); // division by 3 resolves to a number slightly less than the loop limit, so the loop repeats one more time; could be fixed by dividing by 3.0f
 	std::vector<wxPoint> middleRingEnginePositions = ComputePointsOnCircle(100, 10, 1);
 	std::vector<wxPoint> outerRingEnginePositions = ComputePointsOnCircle(170, 20, 1);
 	
@@ -149,6 +219,33 @@ bool MainApp::OnInit() {
 
 	for (const wxPoint& enginePosition : enginePositions) {
 		boosterEngines.push_back(new EngineFrame(45, enginePosition + wxPoint(300, 250), controlUI, wxID_ANY));
+	}
+
+	// A ring (0th index): 3 engines
+	// B ring (1st index): 10 engines
+	// C ring (2nd index): 20 engines
+	const std::vector<std::vector<int>> engineRingRange = { {0, 2}, {3, 12}, {13, 33} };
+	
+	auto GetRangeFromIndex = [engineRingRange](int index) {
+		for (int i = 0; i < engineRingRange.size(); i++) {
+			if ((engineRingRange[i][0] <= index) && (engineRingRange[i][1] >= index)) {
+				return i;
+			}
+			else continue;
+		}
+
+		return 0;
+	};
+
+
+	short currentRing = GetRangeFromIndex(0);
+	
+	// Generate kRPC nametags
+	for (int i = 0; i < boosterEngines.size(); i++) {
+		boosterEngines.at(i)->kRPCNametag = 'A' + GetRangeFromIndex(i);
+		boosterEngines.at(i)->kRPCNametag.append(",");
+
+		boosterEngines.at(i)->kRPCNametag.append(std::to_string(i - engineRingRange[GetRangeFromIndex(i)][0] + 1));
 	}
 
 	toggleShortcutList = new wxMenu();
@@ -164,6 +261,8 @@ bool MainApp::OnInit() {
 	Bind(wxEVT_MENU, &MainApp::OnMenuActivated, this);
 
 	renderingFrame->Show();
+
+	RPCConnect();
 	
 	return true;
 }
