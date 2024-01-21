@@ -76,7 +76,7 @@
     <LibraryPath>E:\wx_source\wxWidgets-3.0.5\lib\vc_x64_lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>E:\protobuf\include;E:\krpc\include;E:\wx_source\wxWidgets-3.2.4-static\lib\vc_x64_lib\mswu;E:\wx_source\wxWidgets-3.2.4-static\include;$(IncludePath)</IncludePath>
+    <IncludePath>E:\asio\asio-1.28.0\include;E:\protobuf\include;E:\krpc\include;E:\wx_source\wxWidgets-3.2.4-static\lib\vc_x64_lib\mswu;E:\wx_source\wxWidgets-3.2.4-static\include;$(IncludePath)</IncludePath>
     <LibraryPath>E:\protobuf\lib;E:\krpc\Release;E:\wx_source\wxWidgets-3.2.4-static\lib\vc_x64_lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

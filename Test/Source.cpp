@@ -14,6 +14,12 @@
 
 #include "krpc/stream.hpp"
 #include "krpc/event.hpp"
+#include "krpc/krpc.pb.hpp"
+#include "krpc/connection.hpp"
+#include "krpc/decoder.hpp"
+#include "krpc/encoder.hpp"
+#include "krpc/service.hpp"
+#include "krpc/object.hpp"
 
 #include "krpc/services/krpc.hpp"
 #include "krpc/services/space_center.hpp"
