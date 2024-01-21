@@ -12,6 +12,9 @@
 #include <krpc.hpp>
 #include <krpc/error.hpp>
 
+#include "krpc/stream.hpp"
+#include "krpc/event.hpp"
+
 #include "krpc/services/krpc.hpp"
 #include "krpc/services/space_center.hpp"
 
