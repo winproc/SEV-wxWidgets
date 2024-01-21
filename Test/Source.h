@@ -10,7 +10,7 @@ public:
 
 private:
 
-	krpc::Client serverConnection{};
+	
 	bool isConnectionInitialized = false;
 
 	wxMenu* toggleShortcutList = NULL;
@@ -18,8 +18,8 @@ private:
 	std::vector<EngineFrame*> boosterEngines;
 	std::vector<EngineFrame*> starshipEngines;
 
-	void RPCConnect();
-	bool RegisterEventCallbacks();
+	void ConnectToPython();
+	
 
 	void OnRMBClicked(const wxMouseEvent& Event);
 	void OnMenuActivated(const wxCommandEvent& Event);

@@ -1,5 +1,4 @@
 
-
 #include <wx/wxprec.h>
 
 #ifndef WX_PRECOMP
@@ -9,11 +8,7 @@
 #include <wx/notifmsg.h>
 #include <wx/graphics.h>
 
-#include <krpc.hpp>
-#include <krpc/error.hpp>
-
-#include "krpc/services/krpc.hpp"
-#include "krpc/services/space_center.hpp"
+#include "asio.hpp"
 
 // Declarations
 
@@ -23,22 +18,41 @@
 
 
 
-void MainApp::RPCConnect() {
-	try {
-		serverConnection = krpc::connect("Starship Layout Emulator", "localhost");
-		isConnectionInitialized = true;
+void MainApp::ConnectToPython() {
 
-		RegisterEventCallbacks();
-	}
-	catch (std::runtime_error Error) {
-		wxMessageBox("The program was unable to connect to the kRPC server.\n\nCheck if your server is running (on RPC port 50000 and stream port 50001)", "Connection Error");
-		
-		serverConnection = {};
-		isConnectionInitialized = false;
+
+	STARTUPINFOA si;
+	PROCESS_INFORMATION pi;
+
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+	ZeroMemory(&pi, sizeof(pi));
+
+	char cmdLineEntry[512] = { 0 };
+	GetFullPathNameA("Python\\Python312\\python.exe", sizeof(cmdLineEntry), cmdLineEntry, NULL);
+
+	std::strcat(cmdLineEntry, " Server\\server.py");
+
+	wxMessageBox(cmdLineEntry, "Test");
+
+	if (!CreateProcessA(
+		NULL,
+		cmdLineEntry,
+		NULL,
+		NULL,
+		FALSE,
+		CREATE_NO_WINDOW,
+		NULL,
+		NULL,
+		&si,
+		&pi
+	)) {
+		wxMessageBox("Python invocation failed with system error code: "  + std::to_string(GetLastError()) + "\n See System Error Codes at learn.microsoft.com", "Error");
 	}
 
 }
 
+/*
 bool MainApp::RegisterEventCallbacks() {
 	if (isConnectionInitialized) {
 
@@ -51,6 +65,7 @@ bool MainApp::RegisterEventCallbacks() {
 			Vessel = spaceCenter.active_vessel();
 			Parts = Vessel.parts();
 			
+			bool debugIteration = true;
 			for (EngineFrame* EngineUI : boosterEngines) {
 
 				auto GetEngine = [&Parts, &EngineUI]() {
@@ -69,14 +84,28 @@ bool MainApp::RegisterEventCallbacks() {
 
 				auto engine = Engine.engine();
 
-				auto thrust_call = engine.thrust_call();
+				auto thrust_call = engine.throttle_call();
+
+				if (debugIteration) {
+					wxMessageBox("KRPC Server test (throttle=0): " + std::to_string(engine.throttle()), "Debug test");
+				}
+				
 
 				typedef krpc::services::KRPC::Expression Expr;
 
-				auto eventHandler = ([&engine, EngineUI]() {
+				std::mutex ThreadControl;
 
-					EngineUI->enabled = (engine.thrust() == 0.0f) ? false : true;
+				auto eventHandler = ([&ThreadControl,&engine, EngineUI]() {
+
+					ThreadControl.lock();
+				
+					EngineUI->enabled = (engine.throttle() == 0.0f) ? false : true;
 					EngineUI->Redraw();
+					
+					wxMessageBox("Recieved message from server", "Recieved message");
+					
+
+					ThreadControl.unlock();
 
 				});
 
@@ -85,12 +114,15 @@ bool MainApp::RegisterEventCallbacks() {
 
 				disablingEvent.add_callback(eventHandler);
 				enablingEvent.add_callback(eventHandler);
+
+				debugIteration = false;
 			}
 			
 		
 	}
 	else return false;
 }
+*/
 
 void MainApp::OnRMBClicked(const wxMouseEvent& Event) {
 	wxWindow::FindWindowById(Event.GetId())->PopupMenu(toggleShortcutList);
@@ -126,7 +158,7 @@ void MainApp::OnMenuActivated(const wxCommandEvent& Event) {
 
 	case 5:
 	{
-		RPCConnect();
+		ConnectToPython();
 		break;
 	}
 	}
@@ -255,14 +287,14 @@ bool MainApp::OnInit() {
 	toggleShortcutList->Append(3, "Enable SS Engines");
 	toggleShortcutList->Append(4, "Disable SS Engines");
 
-	toggleShortcutList->Append(5, "Reconnect to kRPC");
+	toggleShortcutList->Append(5, "Reconnect to kRPC Python Client");
 
 	Bind(wxEVT_RIGHT_UP, &MainApp::OnRMBClicked, this);
 	Bind(wxEVT_MENU, &MainApp::OnMenuActivated, this);
 
 	renderingFrame->Show();
 
-	RPCConnect();
+	ConnectToPython();
 	
 	return true;
 }
