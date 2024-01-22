@@ -1,4 +1,6 @@
 
+
+
 #include <wx/wxprec.h>
 
 #ifndef WX_PRECOMP
@@ -16,6 +18,71 @@
 #include "Gui.h"
 #include "Source.h"
 
+#include <fstream>
+
+wxDEFINE_EVENT(OUTPUT_RECIEVED, wxThreadEvent);
+
+void MainApp::HandleConnectionOutput(wxThreadEvent& Event) {
+	wxMessageBox(Event.GetString(), "Debug");
+}
+
+wxThread::ExitCode PythonConnection::Entry() {
+	while (!TestDestroy()) {
+
+		asio::io_context context;
+		asio::ip::tcp::resolver tcpResolver(context);
+
+		asio::ip::tcp::socket socket(context);
+		asio::connect(socket, tcpResolver.resolve("localhost", "6969"));
+		
+		try {
+			for (;;) {
+				char Buffer[1024] = { 0 };
+				asio::error_code error;
+
+				if (socket.read_some(asio::buffer(Buffer), error) > 0) {
+					wxThreadEvent serverResponse(OUTPUT_RECIEVED);
+					serverResponse.SetString(Buffer);
+
+					wxTheApp->QueueEvent(&serverResponse);
+				}
+
+				if (error == asio::error::eof) {
+
+					throw std::runtime_error("Connection closed abruptly");
+					break;
+
+				}
+				else if (error) {
+					throw std::system_error(error);
+				}
+
+			}
+		}
+		catch (std::exception& Error) {
+			wxMessageBox(Error.what(), "Error");
+
+			return (wxThread::ExitCode)0;
+		}
+		
+
+	}
+
+	return (wxThread::ExitCode)0;
+}
+
+void MainApp::StartConnectionThread() {
+
+	PythonConnection* connection = new PythonConnection(this);
+
+	if (connection->Run() != wxTHREAD_NO_ERROR) {
+		wxMessageBox("Thread creation failed", "Error");
+
+		delete connection;
+		connection = NULL;
+	}
+
+}
 
 
 void MainApp::ConnectToPython() {
@@ -32,8 +99,7 @@ void MainApp::ConnectToPython() {
 	GetFullPathNameA("Python\\Python312\\python.exe", sizeof(cmdLineEntry), cmdLineEntry, NULL);
 
 	std::strcat(cmdLineEntry, " Server\\server.py");
-
-	wxMessageBox(cmdLineEntry, "Test");
+	
 
 	if (!CreateProcessA(
 		NULL,
@@ -41,7 +107,7 @@ void MainApp::ConnectToPython() {
 		NULL,
 		NULL,
 		FALSE,
-		CREATE_NO_WINDOW,
+		0,
 		NULL,
 		NULL,
 		&si,
@@ -50,79 +116,11 @@ void MainApp::ConnectToPython() {
 		wxMessageBox("Python invocation failed with system error code: "  + std::to_string(GetLastError()) + "\n See System Error Codes at learn.microsoft.com", "Error");
 	}
 
+	StartConnectionThread();
+
 }
 
-/*
-bool MainApp::RegisterEventCallbacks() {
-	if (isConnectionInitialized) {
 
-			krpc::services::KRPC krpc_server(&serverConnection);
-			krpc::services::SpaceCenter spaceCenter(&serverConnection);
-
-			krpc::services::SpaceCenter::Vessel Vessel;
-			krpc::services::SpaceCenter::Parts Parts;
-
-			Vessel = spaceCenter.active_vessel();
-			Parts = Vessel.parts();
-			
-			bool debugIteration = true;
-			for (EngineFrame* EngineUI : boosterEngines) {
-
-				auto GetEngine = [&Parts, &EngineUI]() {
-					
-					auto EngineList = Parts.with_tag(EngineUI->kRPCNametag);
-
-					if (EngineList.size() > 0) {
-						return EngineList[0];
-					}
-
-					
-				};
-
-				krpc::services::SpaceCenter::Part Engine;
-				Engine = GetEngine();
-
-				auto engine = Engine.engine();
-
-				auto thrust_call = engine.throttle_call();
-
-				if (debugIteration) {
-					wxMessageBox("KRPC Server test (throttle=0): " + std::to_string(engine.throttle()), "Debug test");
-				}
-				
-
-				typedef krpc::services::KRPC::Expression Expr;
-
-				std::mutex ThreadControl;
-
-				auto eventHandler = ([&ThreadControl,&engine, EngineUI]() {
-
-					ThreadControl.lock();
-				
-					EngineUI->enabled = (engine.throttle() == 0.0f) ? false : true;
-					EngineUI->Redraw();
-					
-					wxMessageBox("Recieved message from server", "Recieved message");
-					
-
-					ThreadControl.unlock();
-
-				});
-
-				auto disablingEvent = krpc_server.add_event(Expr::equal(serverConnection, Expr::call(serverConnection, thrust_call), Expr::constant_float(serverConnection, 0.0f)));
-				auto enablingEvent = krpc_server.add_event(Expr::greater_than(serverConnection, Expr::call(serverConnection, thrust_call), Expr::constant_float(serverConnection, 0.0f)));
-
-				disablingEvent.add_callback(eventHandler);
-				enablingEvent.add_callback(eventHandler);
-
-				debugIteration = false;
-			}
-			
-		
-	}
-	else return false;
-}
-*/
 
 void MainApp::OnRMBClicked(const wxMouseEvent& Event) {
 	wxWindow::FindWindowById(Event.GetId())->PopupMenu(toggleShortcutList);
@@ -161,6 +159,11 @@ void MainApp::OnMenuActivated(const wxCommandEvent& Event) {
 		ConnectToPython();
 		break;
 	}
+	default:
+	{
+		wxMessageBox("Unintended behaviour; See error code " + std::to_string(GetLastError()), "Error");
+	}
+
 	}
 
 }
@@ -291,6 +294,7 @@ bool MainApp::OnInit() {
 
 	Bind(wxEVT_RIGHT_UP, &MainApp::OnRMBClicked, this);
 	Bind(wxEVT_MENU, &MainApp::OnMenuActivated, this);
+	Bind(OUTPUT_RECIEVED, &MainApp::HandleConnectionOutput, this);
 
 	renderingFrame->Show();
 
