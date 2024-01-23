@@ -9,6 +9,7 @@
 
 #include <wx/notifmsg.h>
 #include <wx/graphics.h>
+#include <wx/socket.h>
 
 #include "asio.hpp"
 
@@ -20,66 +21,55 @@
 
 #include <fstream>
 
-wxDEFINE_EVENT(OUTPUT_RECIEVED, wxThreadEvent);
+BEGIN_EVENT_TABLE(MainApp, wxApp)
+EVT_SOCKET(PYCONNECTION, MainApp::HandleConnectionOutput)
+END_EVENT_TABLE()
 
-void MainApp::HandleConnectionOutput(wxThreadEvent& Event) {
-	wxMessageBox(Event.GetString(), "Debug");
-}
 
-wxThread::ExitCode PythonConnection::Entry() {
-	while (!TestDestroy()) {
+void MainApp::HandleConnectionOutput(wxSocketEvent& Event) {
 
-		asio::io_context context;
-		asio::ip::tcp::resolver tcpResolver(context);
+	char buffer[4096] = { 0 };
 
-		asio::ip::tcp::socket socket(context);
-		asio::connect(socket, tcpResolver.resolve("localhost", "6969"));
-		
-		try {
-			for (;;) {
-				char Buffer[1024] = { 0 };
-				asio::error_code error;
+	Event.GetSocket()->Read(buffer, 4096);
+	
+	char* term = std::strtok(buffer, ";");
 
-				if (socket.read_some(asio::buffer(Buffer), error) > 0) {
-					wxThreadEvent serverResponse(OUTPUT_RECIEVED);
-					serverResponse.SetString(Buffer);
+	while (term != NULL) {
+		auto kRPCResponse = std::string(term);
 
-					wxTheApp->QueueEvent(&serverResponse);
-				}
+		wxString Nametag = kRPCResponse.substr(0, kRPCResponse.find(":"));
+		EngineFrame* Frame = EngineFrame::FindFrameByNametag(Nametag.ToStdString(), boosterEngines);
 
-				if (error == asio::error::eof) {
+		float Throttle = std::stof(kRPCResponse.substr(kRPCResponse.find(":") + 1, kRPCResponse.length()));
 
-					throw std::runtime_error("Connection closed abruptly");
-					break;
+		Frame->enabled = (Throttle < 0.1f) ? false : true;
+		Frame->Redraw();
 
-				}
-				else if (error) {
-					throw std::system_error(error);
-				}
-
-			}
-		}
-		catch (std::exception& Error) {
-			wxMessageBox(Error.what(), "Error");
-
-			return (wxThread::ExitCode)0;
-		}
-		
-
+		term = std::strtok(NULL, ";");
 	}
 
-	return (wxThread::ExitCode)0;
 }
 
-void MainApp::StartConnectionThread() {
 
-	PythonConnection* connection = new PythonConnection(this);
+void MainApp::StartConnection() {
 
-	if (connection->Run() != wxTHREAD_NO_ERROR) {
-		wxMessageBox("Thread creation failed", "Error");
+	wxSocketClient::Initialize();
 
-		delete connection;
-		connection = NULL;
+	wxSocketClient* PythonConnection = new wxSocketClient();
+
+	wxIPV4address Localhost;
+	Localhost.LocalHost();
+	Localhost.Service(6969);
+
+	if (!PythonConnection->Connect(Localhost)) {
+		wxMessageBox("Unable to connect to Python server", "Network error");
+	}
+	else {
+		
+		PythonConnection->SetEventHandler(*wxTheApp);
+		PythonConnection->SetNotify(wxSOCKET_INPUT_FLAG);
+		PythonConnection->Notify(true);
+
 	}
 
 }
@@ -107,7 +97,7 @@ void MainApp::ConnectToPython() {
 		NULL,
 		NULL,
 		FALSE,
-		0,
+		CREATE_NO_WINDOW,
 		NULL,
 		NULL,
 		&si,
@@ -116,7 +106,7 @@ void MainApp::ConnectToPython() {
 		wxMessageBox("Python invocation failed with system error code: "  + std::to_string(GetLastError()) + "\n See System Error Codes at learn.microsoft.com", "Error");
 	}
 
-	StartConnectionThread();
+	StartConnection();
 
 }
 
@@ -190,7 +180,7 @@ void EngineFrame::Clear(wxGraphicsContext* GC) {
 }
 
 void EngineFrame::Redraw() {
-	wxPaintDC paintContext(this);
+	wxClientDC paintContext(this);
 	wxGraphicsRenderer* d2dRenderer = wxGraphicsRenderer::GetDirect2DRenderer();
 
 	wxGraphicsContext* winContext = d2dRenderer->CreateContextFromUnknownDC(paintContext);
@@ -211,7 +201,28 @@ void EngineFrame::Redraw() {
 	delete winContext;
 }
 
-void EngineFrame::OnPaint(const wxPaintEvent& Event) { Redraw(); };
+void EngineFrame::OnPaint(const wxPaintEvent& Event) {
+	wxPaintDC paintContext(this);
+	wxGraphicsRenderer* d2dRenderer = wxGraphicsRenderer::GetDirect2DRenderer();
+
+	wxGraphicsContext* winContext = d2dRenderer->CreateContextFromUnknownDC(paintContext);
+
+	Clear(winContext);
+
+	winContext->SetPen(wxPen(wxColour(255, 255, 255), 1, wxPENSTYLE_SOLID));
+
+	if (enabled)
+		winContext->SetBrush(wxBrush(*wxWHITE_BRUSH));
+	else
+		winContext->SetBrush(wxBrush(*wxTRANSPARENT_BRUSH));
+
+	winContext->DrawEllipse(0, 0, radius - 1, radius - 1);
+
+	winContext->Flush();
+
+	delete winContext;
+
+};
 
 EngineFrame* EngineFrame::FindFrameByNametag(std::string Nametag, const std::vector<EngineFrame*>& List) {
 
@@ -294,7 +305,8 @@ bool MainApp::OnInit() {
 
 	Bind(wxEVT_RIGHT_UP, &MainApp::OnRMBClicked, this);
 	Bind(wxEVT_MENU, &MainApp::OnMenuActivated, this);
-	Bind(OUTPUT_RECIEVED, &MainApp::HandleConnectionOutput, this);
+	Bind(wxEVT_SOCKET, &MainApp::HandleConnectionOutput, this);
+	//Bind(OUTPUT_RECIEVED, &MainApp::HandleConnectionOutput, this);
 
 	renderingFrame->Show();
 
